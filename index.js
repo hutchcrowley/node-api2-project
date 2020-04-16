@@ -7,7 +7,7 @@ const server = express()
 const port = 3000
 
 server.use(express.json())
-server.use(morgan('default'))
+server.use(morgan())
 server.use('/api', welcomeRouter)
 server.use('/api/posts', postsRouter)
 

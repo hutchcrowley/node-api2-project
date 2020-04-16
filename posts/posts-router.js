@@ -54,54 +54,62 @@ router.get('/:id/comments', (req, res, next) => {
 
 // route handler for adding a new post
 router.post('/', (req, res, next) => {
-	console.log(req)
-	const body = req.body
-	console.log('Request body in post request: ', body)
-	if (!body) {
-		res.status(400).json({
-			errorMessage: 'Please provide a title and contents for the post',
+	let data = req.body
+	if (!data.title || !data.contents) {
+		return res.status(400).json({
+			errorMessage: 'Please provide title and contents for the post',
 		})
-	} else {
-		db
-			.insert(body)
-			.then(id => {
-				db
-					.findById(id)
-					.then(post => {
-						res.status(201).json(post)
-					})
-					.catch(err => console.error('Error: ', err))
-			})
-			.catch(next)
 	}
+	db.insert(data).then(postId => {
+		db
+			.findById(postId.id)
+			.then(post => {
+				res.status(201).json(post)
+			})
+			.catch(err => next(err))
+	})
 })
 
 // route handler for adding a new comment
 router.post('/:id/comments', (req, res, next) => {
-	const { id } = req.params.id
-	const { text } = req.body
-	const comment = { ...req.body, post_id: id }
+	// extract ID parameter from request URL
+	const id = req.params.id
+	console.log('id variable: ', id)
+	// extract request body object item: text from req.body
+	const text = req.body.text
+	console.log('text variable: ', text)
+	// format comment object to be sent to database
+	const comment = { post_id: id, text: text }
+	console.log('comment object: ', comment)
+	// check to see if request contains a text string
 	if (!text) {
+		// return an error if not
 		res.status(400).json({
 			errorMessage: 'Please provide text for the comment.',
 		})
 	} else {
+		// if so, check to see if the post id matches an existing post to add the comment to using the posts findById method
 		db
 			.findById(id)
 			.then(post => {
-				if (!post.length) {
+				// check to make sure the post object has been returned
+				if (!post) {
+					// if not, throw this error
 					res.status(404).json({
 						message: 'The post with the specified ID does not exist.',
 					})
 				} else {
+					// if so, add the comment to the post using the comment .insertComment method
 					db
 						.insertComment(comment)
 						.then(comment => {
 							res.status(201).json(comment)
 						})
+						// sends any errors to the error handling middleware
 						.catch(next)
 				}
 			})
+			// send any errors to the error handling middleware
 			.catch(next)
 	}
 })
@@ -119,7 +127,10 @@ router.put('/:id', (req, res, next) => {
 			.update(id, post)
 			.then(updated => {
 				if (updated) {
-					res.status(200).json(updated)
+					res.status(200).json({
+						message: 'Post successfully updated!',
+						updated,
+					})
 				} else {
 					res.status(404).json({
 						message: 'The post with the specified ID does not exist.',
